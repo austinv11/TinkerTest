@@ -213,6 +213,7 @@ def main():
                                                  "state validation.")
 
     args = parser.parse_args()
+    raise NotImplementedError("The CLI is currently incomplete!")  # FIXME
 
 
 if __name__ == '__main__':
