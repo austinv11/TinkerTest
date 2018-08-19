@@ -10,9 +10,12 @@ class MyClass:
 
     my_field_2: 'int'
 
-    def __init__(self, my_field, my_field_2):
+    def __init__(self, my_field, my_field_2, test_param: 'test_param > 1'=2):
         self.my_field = my_field
         self.my_field_2 = my_field_2
+
+    def test(self) -> 'returned is not None':
+        return None
 
 
 def report_assertion(callable):
@@ -25,14 +28,19 @@ def report_assertion(callable):
 
 def main():
     print("No error")
-    report_assertion(lambda: MyClass(6, 1))
+    report_assertion(lambda: MyClass(6, 1).test())
+
     tt.inject_assertions(MyClass)
     print("No error")
     report_assertion(lambda: MyClass(3, 1))
     print("Error...")
+    report_assertion(lambda: MyClass(3, 1).test())
+    print("Error...")
     report_assertion(lambda: MyClass(6, 1))
     print("Error...")
     report_assertion(lambda: MyClass(1, '1'))
+    print("Error...")
+    report_assertion(lambda: MyClass(1, 1, 1))
 
 
 if __name__ == '__main__':

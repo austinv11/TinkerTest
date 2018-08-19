@@ -1,7 +1,9 @@
 # from __future__ import annotations
 import ast
+import functools
+import itertools
 from typing import Type, Callable
-from inspect import signature
+from inspect import signature, getmembers, isroutine, isbuiltin
 from pydoc import locate
 
 import astor
@@ -33,6 +35,7 @@ def getter(name, orig, predicate, annotation):
 
 
 def inject_assertions(type: Type):
+    # Handle properties
     for prop, annotation in type.__annotations__.items():
         predicate = _annotation_to_predicate(prop, annotation)
         orig = getattr(type, prop, None)
@@ -40,6 +43,38 @@ def inject_assertions(type: Type):
         get = getter(prop, orig, predicate, annotation)
         set = setter(prop, orig, predicate, annotation)
         setattr(type, prop, property(get, set))
+
+    # Handle functions
+    for name, func in getmembers(type, lambda x: isroutine(x) and not isbuiltin(x)):
+        sig = signature(func)
+        arg_assertions = []
+        return_assertion = ...
+
+        for param_name, param in sig.parameters.items():
+            annotation = param.annotation if param.annotation != param.empty else None
+            predicate = _annotation_to_predicate(param_name, annotation)
+            wrapped = _pred_check(predicate, lambda self, x: ..., annotation)
+            arg_assertions.append(wrapped)
+
+        annotation = sig.return_annotation if sig.return_annotation != sig.empty else None
+        predicate = _annotation_to_predicate('returned', annotation)
+        wrapped = _pred_check(predicate, lambda self, x: ..., annotation)
+        return_assertion = wrapped
+
+        setattr(type, name, _wrapper_create(arg_assertions, return_assertion, func))
+
+
+def _wrapper_create(arg_assertions, return_assertion, func):
+    def wrap(*args, **kwargs):
+        self = kwargs['self'] if 'self' in kwargs else (args[0] if len(args) > 0 else None)
+
+        for arg, assertion in zip(itertools.chain(args, kwargs.values()), arg_assertions):
+            assertion(self, arg)
+        return_val = func(*args, **kwargs)
+        return_assertion(self, return_val)
+        return return_val
+
+    return wrap
 
 
 def _annotation_to_predicate(name, annotation) -> Callable[[object, object], bool]:
@@ -102,8 +137,12 @@ def _annotation_to_predicate(name, annotation) -> Callable[[object, object], boo
             raise NotImplementedError("Calls are not implemented yet!")
 
         elif isinstance(root, ast.Name):
-            prop_type = locate(root.id)
-            return lambda self, x: isinstance(x, prop_type)
+            try:
+                prop_type = locate(root.id)
+                return lambda self, x: isinstance(x, prop_type)
+            except:
+                cached = eval(root.id)
+                return lambda self, x: x == cached
 
         elif isinstance(root, ast.Compare):
             compiled = compile(tree, filename="<tinkertest_ast>", mode='eval')
@@ -139,14 +178,6 @@ def _annotation_to_predicate(name, annotation) -> Callable[[object, object], boo
 
     else:
         raise AssertionError("Unable to handle an annotation of type " + str(type(annotation)))
-
-
-def _handle_props(type):
-    pass
-
-
-def _handle_func(type, func):
-    pass
 
 
 def main():
