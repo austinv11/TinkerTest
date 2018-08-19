@@ -28,7 +28,7 @@ setup(
         "Topic :: Software Development :: Build Tools",
         "Topic :: Software Development :: Testing",
         "Topic :: Software Development :: Testing :: Unit",
-        "Topic :: Utilities"
+        "Topic :: Utilities",
         "Operating System :: OS Independent",
         "Development Status :: 4 - Beta",
     ],
