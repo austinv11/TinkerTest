@@ -30,7 +30,7 @@ def main():
     print("No error")
     report_assertion(lambda: MyClass(6, 1).test())
 
-    tt.inject_assertions(MyClass)
+    tt.inject_into_type(MyClass)
     print("No error")
     report_assertion(lambda: MyClass(3, 1))
     print("Error...")
